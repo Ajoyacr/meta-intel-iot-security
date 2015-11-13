@@ -1,0 +1,73 @@
+language: c++
+addons:
+  apt:
+    packages:
+    - diffstat
+    - texinfo
+    - chrpath
+    # Not needed, sdl removed from qemu below.
+    # - libsdl1.2-dev
+install:
+  - git clone --depth=1 --single-branch --branch=master git://git.openembedded.org/openembedded-core
+  - ( cd openembedded-core && git clone --depth=1 --single-branch --branch=master git://git.openembedded.org/bitbake )
+cache:
+  directories:
+  # Caching the sstate-cache is crucial. Even if a build times out or
+  # fails when it runs out of disk space, the next attempt may succeed or
+  # at least get further. It is also faster.
+  - $HOME/sstate-cache
+script:
+  - pwd
+  - . openembedded-core/oe-init-build-env
+  - pwd
+  - sed -i -e "s;\(BBLAYERS.*\"\);\1 $(pwd)/../meta-security-smack $(pwd)/../meta-security-framework $(pwd)/../meta-integrity;" conf/bblayers.conf
+  # Simplify qemu compilation.
+  - echo 'PACKAGECONFIG_remove_pn-qemu-native = "sdl"' >>conf/local.conf
+  - echo 'ASSUME_PROVIDED_remove = "libsdl-native"' >>conf/local.conf
+  - echo 'DISTRO_FEATURES = "${DISTRO_FEATURES_DEFAULT} ${DISTRO_FEATURES_LIBC} systemd pam smack dbus-cynara ima"' >>conf/local.conf
+  - echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >>conf/local.conf
+  - echo 'DISTRO_FEATURES_BACKFILL_CONSIDERED = "sysvinit"' >>conf/local.conf
+  - echo 'VIRTUAL-RUNTIME_initscripts = ""' >>conf/local.conf
+  - echo 'CORE_IMAGE_EXTRA_INSTALL_append-pn-core-image-minimal = "security-manager cynara app-runas"' >>conf/local.conf
+  - echo 'INHERIT_append-pn-core-image-minimal = " ima-evm-rootfs"' >>conf/local.conf
+  # Need to monitor less directories (it is all one file system) and
+  # can accept lower security margins, because a failure is not that
+  # critical.
+  - echo 'BB_DISKMON_DIRS = " STOPTASKS,/tmp,500M,10K STOPTASKS,${DL_DIR},500M,10K ABORT,/tmp,100M,1K ABORT,${DL_DIR},100M,1K"' >>conf/local.conf
+  # Required to avoid running out of disk space during the build.
+  - echo 'INHERIT += "rm_work"' >>conf/local.conf
+  # Even with rm_work in place, running too many tasks in parallel can
+  # cause the disk to overflow temporarily and/or trigger the
+  # out-of-memory killer, so we allow only two tasks.  The default is
+  # too large because /proc/cpuinfo is misleading: it seems to show
+  # all CPUs on the host, although in reality (?) the container only has
+  # two, according to
+  # http://docs.travis-ci.com/user/ci-environment/#Virtualization-environments
+  - echo 'BB_NUMBER_THREADS = "2"' >>conf/local.conf
+  - mkdir -p $HOME/sstate-cache
+  - ln -s $HOME/sstate-cache .
+  - cat /proc/cpuinfo
+  - du -h $HOME | grep '^[0-9\.]\+G'
+  # Frees up ~1.2G in the container runtime environment.
+  - rm -rf ~/.rvm
+  - df -h .; du -h -s * $HOME/sstate-cache
+  # By building incrementally more pieces, we get some more insight
+  # into what works and what does not and we have the chance to remove
+  # the downloads (which can be quite big, compared to the 16GB
+  # available to us).
+  #
+  # Setup native build tools first.
+  - ../scripts/travis-cmd-wrapper.py bitbake m4
+  - df -h .
+  - rm -rf downloads
+  - df -h .; du -h -s * $HOME/sstate-cache
+  # Kernel is big, build separately.
+  - ../scripts/travis-cmd-wrapper.py bitbake linux-yocto
+  - df -h .
+  - rm -rf downloads
+  - df -h .; du -h -s * $HOME/sstate-cache
+  # And now the real thing.
+  - ../scripts/travis-cmd-wrapper.py bitbake core-image-minimal
+  - df -h .; du -h -s * $HOME/sstate-cache
+  # temp files are preserved, but should not be that large.
+  - du -h -c -s tmp*/work/*/*/*/temp | tail -1
