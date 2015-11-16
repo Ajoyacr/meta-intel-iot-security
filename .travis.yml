@@ -57,10 +57,10 @@ script:
   # available to us).
   #
   # Setup native build tools first.
-  - ../scripts/travis-cmd-wrapper.py bitbake m4
-  - df -h .
-  - rm -rf downloads
-  - df -h .; du -h -s * $HOME/sstate-cache
+  #- ../scripts/travis-cmd-wrapper.py bitbake m4
+  #- df -h .
+  #- rm -rf downloads
+  #- df -h .; du -h -s * $HOME/sstate-cache
   # Kernel is big, build separately.
   - ../scripts/travis-cmd-wrapper.py bitbake linux-yocto
   - df -h .
