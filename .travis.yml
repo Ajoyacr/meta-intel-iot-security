@@ -26,7 +26,7 @@ before_cache:
   # Delete directories with big files first and stop deleting
   # when we have enough space.
   - df -h .
-  - for i in ~/*/build/tmp*/deploy/images rm -rf ~/*/build/downloads ~/*/build; do if [ $(df -B1048576 --output=avail . | tail -1) -lt 1500 ]; then echo deleting $i; rm -rf $i; else break; fi; done
+  - for i in ~/*/build/tmp*/deploy/images rm -rf ~/*/build/downloads ~/*/build; do if [ $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *\([0-9]*\).*/\1/') -lt 1500 ]; then echo deleting $i; rm -rf $i; else break; fi; done
   - df -h .
   - (cd $HOME; tar zxf rvm.tar.gz)
 script:
