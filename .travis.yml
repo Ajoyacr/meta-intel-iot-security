@@ -16,6 +16,14 @@ cache:
   # fails when it runs out of disk space, the next attempt may succeed or
   # at least get further. It is also faster.
   - $HOME/sstate-cache
+before_cache:
+  # Ensure that there is enough space for .rvm directory.
+  # Delete directories with big files first and stop deleting
+  # when we have enough space.
+  - df -h .
+  - for i in ~/*/build/tmp*/deploy/images rm -rf ~/*/build/downloads ~/*/build; do if [ $(df -B1048576 --output=avail . | tail -1) -lt 1500 ]; then echo deleting $i; rm -rf $i; else break; fi; done
+  - df -h .
+  - (cd $HOME; tar zxf rvm.tar.gz)
 script:
   # The container environment has an (undocumented) limit of 2 hours per run.
   # If we get killed, our sstate will not be cached and we won't be faster
@@ -55,9 +63,12 @@ script:
   - ln -s $HOME/sstate-cache .
   - cat /proc/cpuinfo
   - du -h $HOME | grep '^[0-9\.]\+G'
-  # Frees up ~1.2G in the container runtime environment.
-  - rm -rf ~/.rvm
   - df -h .; du -h -s * $HOME/sstate-cache
+  # Temporarily compress .rvm to free up disk space.
+  - (cd $HOME; tar zcf rvm.tar.gz .rvm)
+  - ls -l $HOME/rvm.tar.*
+  - rm -rf $HOME/.rvm
+  - df -h .
   # By building incrementally more pieces, we get some more insight
   # into what works and what does not and we have the chance to remove
   # the downloads (which can be quite big, compared to the 16GB
