@@ -20,6 +20,7 @@ import optparse
 import signal
 import subprocess
 import sys
+import time
 
 parser = optparse.OptionParser()
 parser.add_option("-s", "--status",
@@ -32,14 +33,45 @@ parser.add_option("-i", "--interval",
                   help="repeat status at intervals of this amount of seconds, 0 to disable",
                   default=300,
                   metavar="SECONDS", type="int")
+parser.add_option("-d", "--deadline",
+                  help="stop execution when reaching the given time",
+                  default=time.time,
+                  metavar="SECONDS-SINCE-EPOCH", type="int")
 
 (options, args) = parser.parse_args()
 
-# Set up status alarm.
+def check_deadline(now):
+    if options.deadline > 0 and options.deadline < now:
+        print "\n\n*** travis-cmd-wrapper: deadline reached, shutting down ***\n\n"
+        sys.exit(1)
+
+# Set up status alarm. When we have a deadline, we need to check more often
+# and/or sooner. Sending a SIGALRM manually will also trigger a status report
+# (not really possible in TravisCI, but may be useful elsewhere).
+now = time.time()
+next_status = now + options.interval
+alarm_interval = max(options.interval, 0)
+if options.deadline:
+    check_deadline(now)
+    if options.deadline < now + 60:
+        # Wake up a little too late, to be sure that we trigger the if check.
+        deadline_alarm_interval = max(int(options.deadline + 2 - now), 1)
+    elif next_status > 60:
+        deadline_alarm_interval = 60
+    if deadline_alarm_interval < alarm_interval:
+        alarm_interval = deadline_alarm_interval
+
+print alarm_interval
+
 def status(signum, frame):
-    subprocess.call(options.status, shell=True)
-    if options.interval > 0:
-        signal.alarm(options.interval)
+    global next_status
+    now = time.time()
+    if options.interval < 0 or now >= next_status:
+        subprocess.call(options.status, shell=True)
+        next_status = now + options.interval
+    check_deadline(now)
+    if alarm_interval > 0:
+        signal.alarm(alarm_interval)
 
 # Run command.
 try:
@@ -47,8 +79,8 @@ try:
 
     # Arm timer and handler.
     signal.signal(signal.SIGALRM, status)
-    if options.interval > 0:
-        signal.alarm(options.interval)
+    if alarm_interval > 0:
+        signal.alarm(alarm_interval)
 
     while cmd.poll() is None:
         try:
