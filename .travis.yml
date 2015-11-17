@@ -33,8 +33,9 @@ script:
   # If we get killed, our sstate will not be cached and we won't be faster
   # during the next invocation either. Therefore abort bitbake invocations
   # which take too long soon ourselves, and then let TravisCI cache the
-  # updated sstate. We reserve five minutes for that.
-  - start=$(date +%s); deadline=$(( $start + 2 * 60 * 60 - 5 * 60 ))
+  # updated sstate. We reserve 10 minutes for that (five was not enough
+  # sometimes).
+  - start=$(date +%s); deadline=$(( $start + 2 * 60 * 60 - 10 * 60 ))
   - echo "Started on $(date --date=@$start), must end at $(date --date=@$deadline)."
   - pwd
   - echo $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *\([0-9]*\).*/\1/')
