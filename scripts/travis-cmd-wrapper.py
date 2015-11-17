@@ -1,5 +1,11 @@
 #!/usr/bin/python
 #
+# Author:       Patrick Ohly <patrick.ohly@intel.com>
+# Copyright:    Copyright (C) 2015 Intel Corporation
+#
+# This file is licensed under the MIT license, see COPYING.MIT in
+# this source distribution for the terms.
+
 # Runs a command, pipes its output to stdout, and injects status
 # reports at regular time interval.
 #
