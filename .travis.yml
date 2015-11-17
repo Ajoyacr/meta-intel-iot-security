@@ -25,9 +25,7 @@ before_cache:
   # Ensure that there is enough space for .rvm directory.
   # Delete directories with big files first and stop deleting
   # when we have enough space.
-  - df -h .
-  - for i in $TRAVIS_BUILD_DIR/build/tmp*/deploy/images $TRAVIS_BUILD_DIR/build/downloads $TRAVIS_BUILD_DIR/build; do if [ $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *[0-9]* [0-9]* *\([0-9]*\).*/\1/' ) -lt 1500 ]; then echo deleting $i; rm -rf $i; else break; fi; done
-  - df -h .
+  - for i in $TRAVIS_BUILD_DIR/build/tmp*/deploy/images $TRAVIS_BUILD_DIR/build/downloads $TRAVIS_BUILD_DIR/build; do df -h .; if [ $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *[0-9]* [0-9]* *\([0-9]*\).*/\1/' ) -lt 1500 ]; then echo deleting $i; rm -rf $i; else break; fi; done; df -h .
   - (cd $HOME; tar zxf rvm.tar.gz)
 script:
   # The container environment has an (undocumented) limit of 2 hours per run.
