@@ -105,7 +105,7 @@ script:
   - rm -rf downloads
   - df -h .; du -h -s * $HOME/sstate-cache
   # And now the real thing.
-  #- ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake core-image-minimal
-  #- df -h .; du -h -s * $HOME/sstate-cache
+  - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake core-image-minimal
+  - df -h .; du -h -s * $HOME/sstate-cache
   # temp files are preserved, but should not be that large.
   - du -h -c -s tmp*/work/*/*/*/temp | tail -1
