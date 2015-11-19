@@ -37,8 +37,10 @@ python rm_downloads () {
             # For now, removal of directories is avoided because it
             # is more risky than removing a single file.
             if os.path.isdir(local):
-                bb.note('Not removing download directory: %s' % local)
-                # shutil.rmtree(local)
+                bb.note('Removing download directory: %s' % local)
+                renamed = local + '.deleteme'
+                os.rename(local, renamed)
+                shutil.rmtree(renamed)
             elif os.path.exists(local):
                 bb.note('Removing download file: %s' % local)
                 os.unlink(local)
