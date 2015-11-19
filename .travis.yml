@@ -102,10 +102,13 @@ script:
   # Kernel is big, build separately.
   - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake linux-yocto
   - df -h .
+  - (du -h -c -s $(ls -1 -d downloads/* downloads/git2/* | grep -v -e '.done$' -e '/git2$')) || true
   - rm -rf downloads
-  - df -h .; du -h -s * $HOME/sstate-cache
+  - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # And now the real thing.
   - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake core-image-minimal
-  - df -h .; du -h -s * $HOME/sstate-cache
+  - df -h .
+  - (du -h -c -s $(ls -1 -d downloads/* downloads/git2/* | grep -v -e '.done$' -e '/git2$')) || true
+  - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # temp files are preserved, but should not be that large.
   - du -h -c -s tmp*/work/*/*/*/temp | tail -1
