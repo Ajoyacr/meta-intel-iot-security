@@ -100,11 +100,11 @@ script:
   #- rm -rf downloads
   #- df -h .; du -h -s * $HOME/sstate-cache
   # Kernel is big, build separately.
-  - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake linux-yocto
-  - df -h .
-  - (du -h -c -s $(ls -1 -d downloads/* downloads/git2/* | grep -v -e '.done$' -e '/git2$')) || true
-  - rm -rf downloads
-  - (df -h .; du -h -s * $HOME/sstate-cache) || true
+  # - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake linux-yocto
+  # - df -h .
+  # - (du -h -c -s $(ls -1 -d downloads/* downloads/git2/* | grep -v -e '.done$' -e '/git2$')) || true
+  # - rm -rf downloads
+  # - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # And now the real thing.
   - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake core-image-minimal
   - df -h .
