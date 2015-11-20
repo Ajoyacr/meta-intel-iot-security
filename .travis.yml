@@ -79,6 +79,7 @@ script:
   # two, according to
   # http://docs.travis-ci.com/user/ci-environment/#Virtualization-environments
   - echo 'BB_NUMBER_THREADS = "2"' >>conf/local.conf
+  - echo 'PARALLEL_MAKE = "-j4"' >>conf/local.conf
   - mkdir -p $HOME/sstate-cache
   - ln -s $HOME/sstate-cache .
   - cat /proc/cpuinfo
