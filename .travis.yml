@@ -119,3 +119,4 @@ script:
   - echo 'INHERIT += "testimage"' >>conf/local.conf
   - echo "TEST_SUITES = \"ssh $tests\"" >>conf/local.conf
   - xvfb-run ../scripts/travis-cmd-wrapper.py --deadline=$deadline -- bitbake -c testimage iot-os-image
+  - for i in tmp*/work/*/core-image-minimal/*/temp/log.do_testimage tmp*/work/*/core-image-minimal/*/testimage/*log; do if [ -e $i ]; then echo "**** $i ****"; cat $i; fi; done
