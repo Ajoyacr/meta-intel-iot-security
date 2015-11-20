@@ -114,8 +114,8 @@ script:
   # temp files are preserved, but should not be that large.
   - du -h -c -s tmp*/work/*/*/*/temp | tail -1
   # Finally! Running tests.
-  - tests=$(ls -1 ../*/lib/oeqa/runtime/*.py | grep -v __init__.py | sed -e 's;.*/\(.*\)\.py;\1;')
+  - tests=$(echo $(ls -1 ../*/lib/oeqa/runtime/*.py | grep -v __init__.py | sed -e 's;.*/\(.*\)\.py;\1;'))
   - echo $tests
   - echo 'INHERIT += "testimage"' >>conf/local.conf
-  - echo "TEST_SUITES=\"ssh $tests\"" >>conf/local.conf
+  - echo "TEST_SUITES = \"ssh $tests\"" >>conf/local.conf
   - xvfb-run ../scripts/travis-cmd-wrapper.py --deadline=$deadline -- bitbake -c testimage iot-os-image
