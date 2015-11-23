@@ -1,7 +1,4 @@
-# Ruby 2.x is required by deploy
-language: ruby
-rvm:
-  - rbx-2.1.1
+language: c++
 compiler: gcc
 # Workaround for caching issue (https://github.com/travis-ci/travis-ci/issues/4393):
 # cache selection depends on compiler, but not env variables. In our test matrix
@@ -50,6 +47,8 @@ before_deploy:
   - find $HOME/sstate-cache -type l -delete
   - find $HOME/sstate-cache -maxdepth 1 -type f -delete
   - find $HOME/sstate-cache
+  # Needed by deploy.
+  - rvm use 2.1.1 --install --binary --fuzzy
 deploy:
   provider: s3
   access_key_id: "$AWS_ACCESS_KEY"
