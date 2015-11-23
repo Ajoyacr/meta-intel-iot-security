@@ -76,7 +76,6 @@ script:
   - echo "Started on $(date --date=@$start), must end at $(date --date=@$deadline)."
   - pwd
   - echo $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *\([0-9]*\).*/\1/')
-  - for i in ~/*/build/tmp*/deploy/images rm -rf ~/*/build/downloads ~/*/build; do if [ $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *\([0-9]*\).*/\1/') -lt 150000 ]; then echo deleting $i; rm -rf $i; else break; fi; done
   - . openembedded-core/oe-init-build-env
   - pwd
   - sed -i -e "s;\(BBLAYERS.*\"\);\1 $(pwd)/../meta-security-smack $(pwd)/../meta-security-framework $(pwd)/../meta-integrity;" conf/bblayers.conf
