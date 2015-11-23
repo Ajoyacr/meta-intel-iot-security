@@ -1,5 +1,8 @@
 language: c++
 compiler: gcc
+# Needed for setting up TAP devices during "bitbake -c testimage".
+# Root access is not needed when running only compile jobs.
+sudo: required
 # Workaround for caching issue (https://github.com/travis-ci/travis-ci/issues/4393):
 # cache selection depends on compiler, but not env variables. In our test matrix
 # we must use a fake compiler to get different caches.
@@ -142,16 +145,16 @@ script:
   # - rm -rf downloads
   # - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # And now the real thing.
-  - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake m4-native # core-image-minimal app-runas mmap-smack-test tcp-smack-test udp-smack-test
+  - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake core-image-minimal app-runas mmap-smack-test tcp-smack-test udp-smack-test
   - df -h .
   - (du -h -c -s $(ls -1 -d downloads/* downloads/git2/* | grep -v -e '.done$' -e '/git2$')) || true
   - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # temp files are preserved, but should not be that large.
   - du -h -c -s tmp*/work/*/*/*/temp | tail -1
   # Finally! Running tests.
-  # - tests=$(echo $(ls -1 ../*/lib/oeqa/runtime/*.py | grep -v __init__.py | sed -e 's;.*/\(.*\)\.py;\1;'))
-  # - echo $tests
-  # - echo 'INHERIT += "testimage"' >>conf/local.conf
-  # - echo "TEST_SUITES = \"ssh $tests\"" >>conf/local.conf
-  # - xvfb-run ../scripts/travis-cmd-wrapper.py --deadline=$deadline -- bitbake -c testimage core-image-minimal
-  # - for i in tmp*/work/*/core-image-minimal/*/temp/log.do_testimage tmp*/work/*/core-image-minimal/*/testimage/*log; do if [ -e $i ]; then echo "**** $i ****"; cat $i; fi; done
+  - tests=$(echo $(ls -1 ../*/lib/oeqa/runtime/*.py | grep -v __init__.py | sed -e 's;.*/\(.*\)\.py;\1;'))
+  - echo $tests
+  - echo 'INHERIT += "testimage"' >>conf/local.conf
+  - echo "TEST_SUITES = \"ssh $tests\"" >>conf/local.conf
+  - xvfb-run ../scripts/travis-cmd-wrapper.py --deadline=$deadline -- bitbake -c testimage core-image-minimal
+  - for i in tmp*/work/*/core-image-minimal/*/temp/log.do_testimage tmp*/work/*/core-image-minimal/*/testimage/*log; do if [ -e $i ]; then echo "**** $i ****"; cat $i; fi; done
