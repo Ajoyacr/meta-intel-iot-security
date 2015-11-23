@@ -7,12 +7,12 @@ matrix:
   include:
     - compiler: ": master"
       env: OE_CORE=master BITBAKE=master
-    - compiler: ": jethro"
-      env: OE_CORE=jethro BITBAKE=1.28
-    - compiler: ": fido"
-      env: OE_CORE=fido BITBAKE=1.26
-    - compiler: ": dizzy"
-      env: OE_CORE=dizzy BITBAKE=1.24
+    # - compiler: ": jethro"
+    #   env: OE_CORE=jethro BITBAKE=1.28
+    # - compiler: ": fido"
+    #   env: OE_CORE=fido BITBAKE=1.26
+    # - compiler: ": dizzy"
+    #   env: OE_CORE=dizzy BITBAKE=1.24
   exclude:
     - compiler: gcc
 addons:
@@ -26,19 +26,36 @@ addons:
 install:
   - git clone --depth=1 --single-branch --branch=$OE_CORE git://git.openembedded.org/openembedded-core
   - ( cd openembedded-core && git clone --depth=1 --single-branch --branch=$BITBAKE git://git.openembedded.org/bitbake )
-cache:
-  directories:
+#cache:
+#  directories:
   # Caching the sstate-cache is crucial. Even if a build times out or
   # fails when it runs out of disk space, the next attempt may succeed or
   # at least get further. It is also faster.
-  - $HOME/sstate-cache
-before_cache:
+  # - $HOME/sstate-cache
+before_deploy:
   # Ensure that there is enough space for .rvm directory.
   # Delete directories with big files first and stop deleting
   # when we have enough space. Return to home directory, too,
   # in case that we end up deleting "build".
   - cd $HOME; for i in $TRAVIS_BUILD_DIR/build/tmp*/deploy/images $TRAVIS_BUILD_DIR/build/downloads $TRAVIS_BUILD_DIR/build/tmp*/work/*  $TRAVIS_BUILD_DIR/build/tmp* $TRAVIS_BUILD_DIR/build; do df -h .; if [ $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *[0-9]* [0-9]* *\([0-9]*\).*/\1/' ) -lt 4000 ]; then echo deleting $i; rm -rf $i; else break; fi; done; df -h .
   - (cd $HOME; tar zxf rvm.tar.gz)
+  # When we have successfully retrieved sstate from our HTTP server,
+  # we end up with files in the top level directory and symlinks to
+  # that in the real sstate location. We need to avoid deploying both
+  # of these.
+  - tree $HOME/sstate-cache
+  - find $HOME/sstate-cache -type l -delete
+  - find $HOME/sstate-cache -maxdepth 1 -type f -delete
+  - tree $HOME/sstate-cache
+deploy:
+  provider: s3
+  access_key_id: "$AWS_ACCESS_KEY"
+  secret_access_key: "$AWS_SECRET_KEY"
+  bucket: "travis-meta-intel-iot-security"
+  skip_cleanup: true
+  local_dir: $HOME/sstate-cache
+  on:
+    all_branches: true
 script:
   # The container environment has an (undocumented) limit of 2 hours per run.
   # If we get killed, our sstate will not be cached and we won't be faster
@@ -107,16 +124,16 @@ script:
   # - rm -rf downloads
   # - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # And now the real thing.
-  - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake core-image-minimal app-runas mmap-smack-test tcp-smack-test udp-smack-test
+  - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake m4-native # core-image-minimal app-runas mmap-smack-test tcp-smack-test udp-smack-test
   - df -h .
   - (du -h -c -s $(ls -1 -d downloads/* downloads/git2/* | grep -v -e '.done$' -e '/git2$')) || true
   - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # temp files are preserved, but should not be that large.
   - du -h -c -s tmp*/work/*/*/*/temp | tail -1
   # Finally! Running tests.
-  - tests=$(echo $(ls -1 ../*/lib/oeqa/runtime/*.py | grep -v __init__.py | sed -e 's;.*/\(.*\)\.py;\1;'))
-  - echo $tests
-  - echo 'INHERIT += "testimage"' >>conf/local.conf
-  - echo "TEST_SUITES = \"ssh $tests\"" >>conf/local.conf
-  - xvfb-run ../scripts/travis-cmd-wrapper.py --deadline=$deadline -- bitbake -c testimage core-image-minimal
-  - for i in tmp*/work/*/core-image-minimal/*/temp/log.do_testimage tmp*/work/*/core-image-minimal/*/testimage/*log; do if [ -e $i ]; then echo "**** $i ****"; cat $i; fi; done
+  # - tests=$(echo $(ls -1 ../*/lib/oeqa/runtime/*.py | grep -v __init__.py | sed -e 's;.*/\(.*\)\.py;\1;'))
+  # - echo $tests
+  # - echo 'INHERIT += "testimage"' >>conf/local.conf
+  # - echo "TEST_SUITES = \"ssh $tests\"" >>conf/local.conf
+  # - xvfb-run ../scripts/travis-cmd-wrapper.py --deadline=$deadline -- bitbake -c testimage core-image-minimal
+  # - for i in tmp*/work/*/core-image-minimal/*/temp/log.do_testimage tmp*/work/*/core-image-minimal/*/testimage/*log; do if [ -e $i ]; then echo "**** $i ****"; cat $i; fi; done
