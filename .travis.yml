@@ -43,10 +43,10 @@ before_deploy:
   # we end up with files in the top level directory and symlinks to
   # that in the real sstate location. We need to avoid deploying both
   # of these.
-  - tree $HOME/sstate-cache
+  - find $HOME/sstate-cache
   - find $HOME/sstate-cache -type l -delete
   - find $HOME/sstate-cache -maxdepth 1 -type f -delete
-  - tree $HOME/sstate-cache
+  - find $HOME/sstate-cache
 deploy:
   provider: s3
   access_key_id: "$AWS_ACCESS_KEY"
