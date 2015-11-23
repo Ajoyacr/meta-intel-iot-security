@@ -33,7 +33,7 @@ parser.add_option("-s", "--status",
                   help="invoked in a shell when it is time for a status report",
                   # 200 columns is readable in the TravisCI Web UI without wrapping.
                   # Depends of course on screen and font size.
-                  default="date; free; df -h .; top -n 1; ps x --cols 200 --forest",
+                  default="date; free; df -h .; COLUMNS=200 ROWS=30 top -w -b -n 1; ps x --cols 200 --forest",
                   metavar="SHELL-CMD")
 parser.add_option("-i", "--interval",
                   help="repeat status at intervals of this amount of seconds, 0 to disable",
