@@ -32,8 +32,10 @@ parser = optparse.OptionParser()
 parser.add_option("-s", "--status",
                   help="invoked in a shell when it is time for a status report",
                   # 200 columns is readable in the TravisCI Web UI without wrapping.
-                  # Depends of course on screen and font size.
-                  default="date; free; df -h .; COLUMNS=200 LINES=30 top -w -b -n 1; ps x --cols 200 --forest",
+                  # Depends of course on screen and font size. Resizing top output
+                  # only works (and is needed) on the more recent Trusty TravisCI
+                  # environment.
+                  default="date; free; df -h .; COLUMNS=200 LINES=30 top -w -b -n 1 2>/dev/null || top -n 1; ps x --cols 200 --forest",
                   metavar="SHELL-CMD")
 parser.add_option("-i", "--interval",
                   help="repeat status at intervals of this amount of seconds, 0 to disable",
