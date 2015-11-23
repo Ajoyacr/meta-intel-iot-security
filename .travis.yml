@@ -53,10 +53,14 @@ deploy:
   provider: s3
   access_key_id: "$AWS_ACCESS_KEY"
   secret_access_key: "$AWS_SECRET_KEY"
-  bucket: "travis-meta-intel-iot-security"
+  bucket: "$AWS_BUCKET"
+  region: "${AWS_BUCKET_REGION:-us-east-1}"
   skip_cleanup: true
   local_dir: $HOME/sstate-cache
   on:
+    # Testing also the other variables would lead to a syntax error because
+    # TravisCI runs the check as [[ (-n "$AWS_ACCESS_KEY" -n "$AWS_SECRET_KEY" -n "$AWS_BUCKET") ]].
+    condition: -n "$AWS_ACCESS_KEY" # -n "$AWS_SECRET_KEY" -n "$AWS_BUCKET"
     all_branches: true
 script:
   # The container environment has an (undocumented) limit of 2 hours per run.
@@ -82,6 +86,8 @@ script:
   - echo 'VIRTUAL-RUNTIME_initscripts = ""' >>conf/local.conf
   - echo 'CORE_IMAGE_EXTRA_INSTALL_append-pn-core-image-minimal = "security-manager cynara app-runas"' >>conf/local.conf
   - echo 'INHERIT_append-pn-core-image-minimal = " ima-evm-rootfs"' >>conf/local.conf
+  # Use Amazon S3 bucket as sstate cache if available.
+  - if [ -n "$AWS_BUCKET" ]; then echo "SSTATE_MIRRORS = \"file://.* http://$AWS_BUCKET.s3-website-${AWS_BUCKET_REGION:-us-east-1}.amazonaws.com/PATH\"" >>conf/local.conf; fi
   # Need to monitor less directories (it is all one file system) and
   # can accept lower security margins, because a failure is not that
   # critical.
@@ -99,6 +105,8 @@ script:
   # http://docs.travis-ci.com/user/ci-environment/#Virtualization-environments
   - echo 'BB_NUMBER_THREADS = "2"' >>conf/local.conf
   - echo 'PARALLEL_MAKE = "-j4"' >>conf/local.conf
+  # Dump our local.conf for debugging.
+  - tail -50 conf/local.conf
   - mkdir -p $HOME/sstate-cache
   - ln -s $HOME/sstate-cache .
   - cat /proc/cpuinfo
