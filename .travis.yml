@@ -47,8 +47,8 @@ before_deploy:
   - find $HOME/sstate-cache -type l -delete
   - find $HOME/sstate-cache -maxdepth 1 -type f -delete
   - find $HOME/sstate-cache
-  # Needed by deploy.
-  - rvm use 2.1.1 --install --binary --fuzzy
+  # Needed by deploy (https://github.com/travis-ci/travis-ci/issues/5145)
+  - rvm 1.9.3 do gem install mime-types -v 2.6.2
 deploy:
   provider: s3
   access_key_id: "$AWS_ACCESS_KEY"
