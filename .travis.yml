@@ -3,6 +3,7 @@ compiler: gcc
 # Needed for setting up TAP devices during "bitbake -c testimage".
 # Root access is not needed when running only compile jobs.
 sudo: required
+dist: trusty
 # Workaround for caching issue (https://github.com/travis-ci/travis-ci/issues/4393):
 # cache selection depends on compiler, but not env variables. In our test matrix
 # we must use a fake compiler to get different caches.
@@ -75,13 +76,15 @@ deploy:
     condition: -n "$AWS_ACCESS_KEY" # -n "$AWS_SECRET_KEY" -n "$AWS_BUCKET"
     all_branches: true
 script:
-  # The container environment has an (undocumented) limit of 2 hours per run.
+  # The container environment has an limit of 2 hours per run. Everything else
+  # only gets 50 minutes.
+  #
   # If we get killed, our sstate will not be cached and we won't be faster
   # during the next invocation either. Therefore abort bitbake invocations
   # which take too long soon ourselves, and then let TravisCI cache the
   # updated sstate. We reserve 10 minutes for that (five was not enough
   # sometimes).
-  - start=$(date +%s); deadline=$(( $start + 2 * 60 * 60 - 10 * 60 ))
+  - start=$(date +%s); deadline=$(( $start + 50 * 60 - 10 * 60 ))
   - echo "Started on $(date --date=@$start), must end at $(date --date=@$deadline)."
   - pwd
   - echo $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *\([0-9]*\).*/\1/')
