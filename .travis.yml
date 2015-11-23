@@ -123,7 +123,6 @@ script:
   - tail -50 conf/local.conf
   - mkdir -p $HOME/sstate-cache
   - ln -s $HOME/sstate-cache .
-  - cat /proc/cpuinfo
   - du -h $HOME | grep '^[0-9\.]\+G'
   - df -h .; du -h -s * $HOME/sstate-cache
   # Temporarily compress .rvm to free up disk space.
