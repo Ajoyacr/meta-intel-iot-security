@@ -39,16 +39,22 @@ before_deploy:
   # in case that we end up deleting "build".
   # - cd $HOME; for i in $TRAVIS_BUILD_DIR/build/tmp*/deploy/images $TRAVIS_BUILD_DIR/build/downloads $TRAVIS_BUILD_DIR/build/tmp*/work/*  $TRAVIS_BUILD_DIR/build/tmp* $TRAVIS_BUILD_DIR/build; do df -h .; if [ $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *[0-9]* [0-9]* *\([0-9]*\).*/\1/' ) -lt 4000 ]; then echo deleting $i; rm -rf $i; else break; fi; done; df -h .
   # - (cd $HOME; tar zxf rvm.tar.gz)
+  # State of sstate before cleaning. "tree" would give nicer output, but is
+  # not available.
+  - find $HOME/sstate-cache
   # When we have successfully retrieved sstate from our HTTP server,
-  # we sometimes (?) end up with files in the top level directory and symlinks to
+  # we end up with files in the top level directory and symlinks to
   # that in the real sstate location. We need to avoid deploying both
   # of these.
-  # In other cases, the downloaded files are in the right place. We can recognize that
-  # by the additional .done file.
-  - find $HOME/sstate-cache
   - find $HOME/sstate-cache -type l -delete -print
   - find $HOME/sstate-cache -maxdepth 1 -type f -delete -print
-  - find $HOME/sstate-cache -name *.done | while read file; do base=$(echo $file | sed -e 's/.done$//'); rm $base $file; echo $base; echo $file; done
+  # In addition, we also get .done files next to the symlinks (or real
+  # files?).
+  - find $HOME/sstate-cache -name *.done | while read file; do base=$(echo $file | sed -e 's/.done$//'); rm -f $base $file; echo $base; echo $file; done
+  # Finally, do_rm_work[_all.tgz.siginfo get created, but never downloaded via HTTP,
+  # so there is no need to upload them.
+  - find $HOME/sstate-cache \( -name *_rm_work.tgz.siginfo -o -name *_rm_work_all.tgz.siginfo \) -delete -print
+  # Result of cleaning.
   - find $HOME/sstate-cache
   # Needed by deploy (https://github.com/travis-ci/travis-ci/issues/5145)
   - rvm 1.9.3 do gem install mime-types -v 2.6.2
