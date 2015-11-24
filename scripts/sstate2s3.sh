@@ -49,7 +49,11 @@ EOF
     if s3cmd --help | grep -q -e --storage-class; then
         S3_STORAGE_CLASS=--storage-class=REDUCED_REDUNDANCY
     fi
-    s3cmd --progress --skip-existing $S3_STORAGE_CLASS sync $HOME/sstate-cache/ s3://travis-meta-intel-iot-security/
+    # Careful with progress: it can make the log too large, causing
+    # TravisCI to abort the job ("The log length has exceeded the
+    # limit of 4 Megabytes (this usually means that test suite is
+    # raising the same exception over and over).").
+    s3cmd --no-progress --skip-existing $S3_STORAGE_CLASS sync $HOME/sstate-cache/ s3://travis-meta-intel-iot-security/
 else
     echo "Not updating sstate in S3 bucket (no credentials or bucket)."
 fi
