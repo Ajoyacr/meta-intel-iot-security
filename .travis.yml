@@ -110,41 +110,8 @@ script:
   - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # temp files are preserved, but should not be that large.
   - du -h -c -s tmp*/work/*/*/*/temp | tail -1
-  # Copy new sstate files to S3 bucket. For that we clean up the sstate first.
-  - |
-  if [ "$AWS_ACCESS_KEY" ] && [ "$AWS_SECRET_KEY" ] && [ "$AWS_BUCKET" ]; then
-      # State of sstate before cleaning. "tree" would give nicer output, but is
-      # not available.
-      if [ "$DEBUG_OUTPUT" ]; then find $HOME/sstate-cache; FIND_DEBUG_PRINT=-print; fi
-      # When we have successfully retrieved sstate from our HTTP server,
-      # we end up with files in the top level directory and symlinks to
-      # that in the real sstate location. We need to avoid deploying both
-      # of these.
-      find $HOME/sstate-cache -type l -delete $FIND_DEBUG_PRINT
-      find $HOME/sstate-cache -maxdepth 1 -type f -delete $FIND_DEBUG_PRINT
-      # In addition, we also get .done files next to the symlinks (or real
-      # files?).
-      find $HOME/sstate-cache -name *.done | while read file; do base=$(echo $file | sed -e 's/.done$//'); rm -f $base $file; if [ "$DEBUG_OUTPUT" ]; then echo $base; echo $file; fi; done
-      # Finally, do_rm_work[_all.tgz.siginfo get created, but never downloaded via HTTP,
-      # so there is no need to upload them.
-      find $HOME/sstate-cache \( -name *_rm_work.tgz.siginfo -o -name *_rm_work_all.tgz.siginfo \) -delete $FIND_DEBUG_PRINT
-      # Result of cleaning.
-      [ ! "$DEBUG_OUTPUT" ] || find $HOME/sstate-cache
-      # Now sync. s3cmd is more flexible than the TravisCI "deploy" or "artifacts" add-ons:
-      # - we know that files are immutable, so we can simply skip existing ones
-      #   (when running builds in parallel, more than one might end up creating the same file).
-      # - we can specify the storage class (reduced redundancy is fine and cheaper).
-      # - we can choose when to run it and whether it overlaps with testing.
-      # - we can throw away the .rvm directory and thus get more free space.
-      # On the other hand, "deploy" could also be configured to copy to other storages.
-      cat >$HOME/.s3cfg <<EOF
-  [default]
-  access_key = $AWS_ACCESS_KEY
-  secret_key = $AWS_SECRET_KEY
-  use_https = False
-  EOF
-      time s3cmd --skip-existing --storage-class=REDUCED_REDUNDANCY sync $HOME/sstate-cache/ s3://travis-meta-intel-iot-security/
-  fi
+  # Copy new sstate files to S3 bucket.
+  - $TRAVIS_BUILD_DIR/scripts/sstate2s3.sh
   # Finally! Running tests.
   - tests=$(echo $(ls -1 ../*/lib/oeqa/runtime/*.py | grep -v __init__.py | sed -e 's;.*/\(.*\)\.py;\1;'))
   - echo $tests
