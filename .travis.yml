@@ -22,6 +22,7 @@ matrix:
 addons:
   apt:
     packages:
+    - s3cmd
     - diffstat
     - texinfo
     - chrpath
@@ -30,51 +31,6 @@ addons:
 install:
   - git clone --depth=1 --single-branch --branch=$OE_CORE git://git.openembedded.org/openembedded-core
   - ( cd openembedded-core && git clone --depth=1 --single-branch --branch=$BITBAKE git://git.openembedded.org/bitbake )
-#cache:
-#  directories:
-  # Caching the sstate-cache is crucial. Even if a build times out or
-  # fails when it runs out of disk space, the next attempt may succeed or
-  # at least get further. It is also faster.
-  # - $HOME/sstate-cache
-before_deploy:
-  # Ensure that there is enough space for .rvm directory.
-  # Delete directories with big files first and stop deleting
-  # when we have enough space. Return to home directory, too,
-  # in case that we end up deleting "build".
-  # - cd $HOME; for i in $TRAVIS_BUILD_DIR/build/tmp*/deploy/images $TRAVIS_BUILD_DIR/build/downloads $TRAVIS_BUILD_DIR/build/tmp*/work/*  $TRAVIS_BUILD_DIR/build/tmp* $TRAVIS_BUILD_DIR/build; do df -h .; if [ $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *[0-9]* [0-9]* *\([0-9]*\).*/\1/' ) -lt 4000 ]; then echo deleting $i; rm -rf $i; else break; fi; done; df -h .
-  - (cd $HOME; tar zxf rvm.tar.gz)
-  # State of sstate before cleaning. "tree" would give nicer output, but is
-  # not available.
-  - if [ "$DEBUG_OUTPUT" ]; then find $HOME/sstate-cache; FIND_DEBUG_PRINT=-print; fi
-  # When we have successfully retrieved sstate from our HTTP server,
-  # we end up with files in the top level directory and symlinks to
-  # that in the real sstate location. We need to avoid deploying both
-  # of these.
-  - find $HOME/sstate-cache -type l -delete $FIND_DEBUG_PRINT
-  - find $HOME/sstate-cache -maxdepth 1 -type f -delete $FIND_DEBUG_PRINT
-  # In addition, we also get .done files next to the symlinks (or real
-  # files?).
-  - find $HOME/sstate-cache -name *.done | while read file; do base=$(echo $file | sed -e 's/.done$//'); rm -f $base $file; if [ "$DEBUG_OUTPUT" ]; then echo $base; echo $file; fi; done
-  # Finally, do_rm_work[_all.tgz.siginfo get created, but never downloaded via HTTP,
-  # so there is no need to upload them.
-  - find $HOME/sstate-cache \( -name *_rm_work.tgz.siginfo -o -name *_rm_work_all.tgz.siginfo \) -delete $FIND_DEBUG_PRINT
-  # Result of cleaning.
-  - if [ "$DEBUG_OUTPUT" ]; then find $HOME/sstate-cache; fi
-  # Needed by deploy (https://github.com/travis-ci/travis-ci/issues/5145)
-  - rvm 1.9.3 do gem install mime-types -v 2.6.2
-deploy:
-  provider: s3
-  access_key_id: "$AWS_ACCESS_KEY"
-  secret_access_key: "$AWS_SECRET_KEY"
-  bucket: "$AWS_BUCKET"
-  region: "${AWS_BUCKET_REGION:-us-east-1}"
-  skip_cleanup: true
-  local_dir: $HOME/sstate-cache
-  on:
-    # Testing also the other variables would lead to a syntax error because
-    # TravisCI runs the check as [[ (-n "$AWS_ACCESS_KEY" -n "$AWS_SECRET_KEY" -n "$AWS_BUCKET") ]].
-    condition: -n "$AWS_ACCESS_KEY" # -n "$AWS_SECRET_KEY" -n "$AWS_BUCKET"
-    all_branches: true
 script:
   # The container environment has an limit of 2 hours per run. Everything else
   # only gets 50 minutes.
@@ -126,9 +82,9 @@ script:
   - ln -s $HOME/sstate-cache .
   - du -h $HOME | grep '^[0-9\.]\+G'
   - df -h .; du -h -s * $HOME/sstate-cache
-  # Temporarily compress .rvm to free up disk space.
-  - (cd $HOME; tar zcf rvm.tar.gz .rvm)
-  - ls -l $HOME/rvm.tar.*
+  # Remove .rvm to free up space. This can only be done when we do not depend anymore
+  # on TravisCI add-ons like "deploy" or "artifacts", because those are implemented in
+  # Ruby.
   - rm -rf $HOME/.rvm
   - df -h .
   # By building incrementally more pieces, we get some more insight
@@ -147,13 +103,48 @@ script:
   # - (du -h -c -s $(ls -1 -d downloads/* downloads/git2/* | grep -v -e '.done$' -e '/git2$')) || true
   # - rm -rf downloads
   # - (df -h .; du -h -s * $HOME/sstate-cache) || true
-  # And now the real thing.
-  - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake core-image-minimal app-runas mmap-smack-test tcp-smack-test udp-smack-test || BITBAKE_RESULT=1
+  # And now the real thing. # core-image-minimal app-runas mmap-smack-test tcp-smack-test udp-smack-test
+  - ../scripts/travis-cmd-wrapper.py --deadline=$deadline bitbake m4-native  || BITBAKE_RESULT=1
   - df -h .
   - (du -h -c -s $(ls -1 -d downloads/* downloads/git2/* | grep -v -e '.done$' -e '/git2$')) || true
   - (df -h .; du -h -s * $HOME/sstate-cache) || true
   # temp files are preserved, but should not be that large.
   - du -h -c -s tmp*/work/*/*/*/temp | tail -1
+  # Copy new sstate files to S3 bucket. For that we clean up the sstate first.
+  - |
+  if [ "$AWS_ACCESS_KEY" ] && [ "$AWS_SECRET_KEY" ] && [ "$AWS_BUCKET" ]; then
+      # State of sstate before cleaning. "tree" would give nicer output, but is
+      # not available.
+      if [ "$DEBUG_OUTPUT" ]; then find $HOME/sstate-cache; FIND_DEBUG_PRINT=-print; fi
+      # When we have successfully retrieved sstate from our HTTP server,
+      # we end up with files in the top level directory and symlinks to
+      # that in the real sstate location. We need to avoid deploying both
+      # of these.
+      find $HOME/sstate-cache -type l -delete $FIND_DEBUG_PRINT
+      find $HOME/sstate-cache -maxdepth 1 -type f -delete $FIND_DEBUG_PRINT
+      # In addition, we also get .done files next to the symlinks (or real
+      # files?).
+      find $HOME/sstate-cache -name *.done | while read file; do base=$(echo $file | sed -e 's/.done$//'); rm -f $base $file; if [ "$DEBUG_OUTPUT" ]; then echo $base; echo $file; fi; done
+      # Finally, do_rm_work[_all.tgz.siginfo get created, but never downloaded via HTTP,
+      # so there is no need to upload them.
+      find $HOME/sstate-cache \( -name *_rm_work.tgz.siginfo -o -name *_rm_work_all.tgz.siginfo \) -delete $FIND_DEBUG_PRINT
+      # Result of cleaning.
+      [ ! "$DEBUG_OUTPUT" ] || find $HOME/sstate-cache
+      # Now sync. s3cmd is more flexible than the TravisCI "deploy" or "artifacts" add-ons:
+      # - we know that files are immutable, so we can simply skip existing ones
+      #   (when running builds in parallel, more than one might end up creating the same file).
+      # - we can specify the storage class (reduced redundancy is fine and cheaper).
+      # - we can choose when to run it and whether it overlaps with testing.
+      # - we can throw away the .rvm directory and thus get more free space.
+      # On the other hand, "deploy" could also be configured to copy to other storages.
+      cat >$HOME/.s3cfg <<EOF
+  [default]
+  access_key = $AWS_ACCESS_KEY
+  secret_key = $AWS_SECRET_KEY
+  use_https = False
+  EOF
+      time s3cmd --skip-existing --storage-class=REDUCED_REDUNDANCY sync $HOME/sstate-cache/ s3://travis-meta-intel-iot-security/
+  fi
   # Finally! Running tests.
   - tests=$(echo $(ls -1 ../*/lib/oeqa/runtime/*.py | grep -v __init__.py | sed -e 's;.*/\(.*\)\.py;\1;'))
   - echo $tests
@@ -161,7 +152,6 @@ script:
   - echo "TEST_SUITES = \"ssh $tests\"" >>conf/local.conf
   - xvfb-run ../scripts/travis-cmd-wrapper.py --deadline=$deadline -- bitbake -c testimage core-image-minimal || TEST_RESULT=1
   - for i in tmp*/work/*/core-image-minimal/*/temp/log.do_testimage tmp*/work/*/core-image-minimal/*/testimage/*log; do if [ -e $i ]; then echo "**** $i ****"; cat $i; fi; done
-after_script:
   # Restore build result to "failed" if we had to suppress the result
   # of some of the bitbake runs.
   - echo "TravisCI result $TRAVIS_TEST_RESULT, build result ${BITBAKE_RESULT:-0}, test result ${TEST_RESULT:-0}"; if [ $TRAVIS_TEST_RESULT -eq 0 ] && ( [ "$BITBAKE_RESULT" ] || [ "$TEST_RESULT" ] ); then TRAVIS_TEST_RESULT=1; false; fi
