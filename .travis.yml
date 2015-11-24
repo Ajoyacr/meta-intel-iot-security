@@ -45,21 +45,21 @@ before_deploy:
   # - (cd $HOME; tar zxf rvm.tar.gz)
   # State of sstate before cleaning. "tree" would give nicer output, but is
   # not available.
-  - find $HOME/sstate-cache
+  - [ ! "$DEBUG_OUTPUT" ] || find $HOME/sstate-cache
   # When we have successfully retrieved sstate from our HTTP server,
   # we end up with files in the top level directory and symlinks to
   # that in the real sstate location. We need to avoid deploying both
   # of these.
-  - find $HOME/sstate-cache -type l -delete -print
-  - find $HOME/sstate-cache -maxdepth 1 -type f -delete -print
+  - find $HOME/sstate-cache -type l -delete $( [ ! "$DEBUG_OUTPUT" ] || echo '-print' )
+  - find $HOME/sstate-cache -maxdepth 1 -type f -delete $( [ ! "$DEBUG_OUTPUT" ] || echo '-print' )
   # In addition, we also get .done files next to the symlinks (or real
   # files?).
-  - find $HOME/sstate-cache -name *.done | while read file; do base=$(echo $file | sed -e 's/.done$//'); rm -f $base $file; echo $base; echo $file; done
+  - find $HOME/sstate-cache -name *.done | while read file; do base=$(echo $file | sed -e 's/.done$//'); rm -f $base $file; if [ "$DEBUG_OUTPUT" ]; then echo $base; echo $file; fi; done
   # Finally, do_rm_work[_all.tgz.siginfo get created, but never downloaded via HTTP,
   # so there is no need to upload them.
-  - find $HOME/sstate-cache \( -name *_rm_work.tgz.siginfo -o -name *_rm_work_all.tgz.siginfo \) -delete -print
+  - find $HOME/sstate-cache \( -name *_rm_work.tgz.siginfo -o -name *_rm_work_all.tgz.siginfo \) -delete $( [ ! "$DEBUG_OUTPUT" ] || echo '-print' )
   # Result of cleaning.
-  - find $HOME/sstate-cache
+  - [ ! "$DEBUG_OUTPUT" ] || find $HOME/sstate-cache
   # Needed by deploy (https://github.com/travis-ci/travis-ci/issues/5145)
   - rvm 1.9.3 do gem install mime-types -v 2.6.2
 deploy:
