@@ -12,12 +12,12 @@
 # Embedding these commands into .travis.yml itself turned out to be
 # close to impossible. See https://github.com/travis-ci/travis-ci/issues/497
 
-set -ex
+set -e
 
 if [ "$AWS_ACCESS_KEY" ] && [ "$AWS_SECRET_KEY" ] && [ "$AWS_BUCKET" ]; then
     # State of sstate before cleaning. "tree" would give nicer output, but is
     # not available.
-    if [ "$DEBUG_OUTPUT" ]; then find $HOME/sstate-cache; FIND_DEBUG_PRINT=-print; fi
+    if [ "$DEBUG_OUTPUT" ]; then echo "current sstate-cache:"; find $HOME/sstate-cache \! -type d; FIND_DEBUG_PRINT=-print; echo "removing from sstate-cache:"; fi
     # When we have successfully retrieved sstate from our HTTP server,
     # we end up with files in the top level directory and symlinks to
     # that in the real sstate location. We need to avoid deploying both
@@ -31,7 +31,7 @@ if [ "$AWS_ACCESS_KEY" ] && [ "$AWS_SECRET_KEY" ] && [ "$AWS_BUCKET" ]; then
     # so there is no need to upload them.
     find $HOME/sstate-cache \( -name *_rm_work.tgz.siginfo -o -name *_rm_work_all.tgz.siginfo \) -delete $FIND_DEBUG_PRINT
     # Result of cleaning.
-    if [ "$DEBUG_OUTPUT" ]; then find $HOME/sstate-cache; fi
+    if [ "$DEBUG_OUTPUT" ]; then echo "cleaned sstate-cache:"; find $HOME/sstate-cache  \! -type d ; fi
     # Now sync. s3cmd is more flexible than the TravisCI "deploy" or "artifacts" add-ons:
     # - we know that files are immutable, so we can simply skip existing ones
     #   (when running builds in parallel, more than one might end up creating the same file).
@@ -45,5 +45,11 @@ access_key = $AWS_ACCESS_KEY
 secret_key = $AWS_SECRET_KEY
 use_https = False
 EOF
-    time s3cmd --skip-existing --storage-class=REDUCED_REDUNDANCY sync $HOME/sstate-cache/ s3://travis-meta-intel-iot-security/
+    # Not supported by all versions of s3cmd, need to check.
+    if s3cmd --help | grep -q -e --storage-class; then
+        S3_STORAGE_CLASS=--storage-class=REDUCED_REDUNDANCY
+    fi
+    s3cmd --progress --skip-existing $S3_STORAGE_CLASS sync $HOME/sstate-cache/ s3://travis-meta-intel-iot-security/
+else
+    echo "Not updating sstate in S3 bucket (no credentials or bucket)."
 fi
