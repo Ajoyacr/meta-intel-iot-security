@@ -42,7 +42,7 @@ before_deploy:
   # when we have enough space. Return to home directory, too,
   # in case that we end up deleting "build".
   # - cd $HOME; for i in $TRAVIS_BUILD_DIR/build/tmp*/deploy/images $TRAVIS_BUILD_DIR/build/downloads $TRAVIS_BUILD_DIR/build/tmp*/work/*  $TRAVIS_BUILD_DIR/build/tmp* $TRAVIS_BUILD_DIR/build; do df -h .; if [ $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *[0-9]* [0-9]* *\([0-9]*\).*/\1/' ) -lt 4000 ]; then echo deleting $i; rm -rf $i; else break; fi; done; df -h .
-  # - (cd $HOME; tar zxf rvm.tar.gz)
+  - (cd $HOME; tar zxf rvm.tar.gz)
   # State of sstate before cleaning. "tree" would give nicer output, but is
   # not available.
   - if [ "$DEBUG_OUTPUT" ]; then find $HOME/sstate-cache; FIND_DEBUG_PRINT=-print; fi
@@ -127,10 +127,10 @@ script:
   - du -h $HOME | grep '^[0-9\.]\+G'
   - df -h .; du -h -s * $HOME/sstate-cache
   # Temporarily compress .rvm to free up disk space.
-  # - (cd $HOME; tar zcf rvm.tar.gz .rvm)
-  # - ls -l $HOME/rvm.tar.*
-  # - rm -rf $HOME/.rvm
-  # - df -h .
+  - (cd $HOME; tar zcf rvm.tar.gz .rvm)
+  - ls -l $HOME/rvm.tar.*
+  - rm -rf $HOME/.rvm
+  - df -h .
   # By building incrementally more pieces, we get some more insight
   # into what works and what does not and we have the chance to remove
   # the downloads (which can be quite big, compared to the 16GB
