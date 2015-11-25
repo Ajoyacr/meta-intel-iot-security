@@ -2,8 +2,8 @@ language: c++
 compiler: gcc
 # Needed for setting up TAP devices during "bitbake -c testimage".
 # Root access is not needed when running only compile jobs.
-#sudo: required
-#dist: trusty
+sudo: required
+dist: trusty
 # Workaround for caching issue (https://github.com/travis-ci/travis-ci/issues/4393):
 # cache selection depends on compiler, but not env variables. In our test matrix
 # we must use a fake compiler to get different caches.
@@ -40,8 +40,8 @@ script:
   # which take too long soon ourselves, and then let TravisCI cache the
   # updated sstate. We reserve 10 minutes for that (five was not enough
   # sometimes).
-  - start=$(date +%s); if false; then duration=50; else duration=120; fi; deadline=$(( $start + $duration * 60 - 10 * 60 ))
-  - env; uname -a
+  - if uname -a | grep -q 3.13; then iscontainer=1; else iscontainer=; fi
+  - start=$(date +%s); if [ "$iscontainer" ]; then duration=120; else duration=50; fi; deadline=$(( $start + $duration * 60 - 10 * 60 ))
   - echo "Started on $(date --date=@$start), must end at $(date --date=@$deadline)."
   - pwd
   - echo $(df -B1048576 . | tail -1 | sed -e 's/[^ ]* *\([0-9]*\).*/\1/')
@@ -79,7 +79,7 @@ script:
   # two, according to
   # http://docs.travis-ci.com/user/ci-environment/#Virtualization-environments
   # The Trusty Beta environment has more RAM and thus can afford more parallelism.
-  - ( if true; then echo 'BB_NUMBER_THREADS = "2"'; echo 'PARALLEL_MAKE = "-j4"'; else echo 'BB_NUMBER_THREADS = "4"'; echo 'PARALLEL_MAKE = "-j8"'; fi ) >>conf/local.conf
+  - ( if [ "$iscontainer" ]; then echo 'BB_NUMBER_THREADS = "2"'; echo 'PARALLEL_MAKE = "-j4"'; else echo 'BB_NUMBER_THREADS = "4"'; echo 'PARALLEL_MAKE = "-j8"'; fi ) >>conf/local.conf
   # Dump our local.conf for debugging.
   - tail -50 conf/local.conf
   - mkdir -p $HOME/sstate-cache
