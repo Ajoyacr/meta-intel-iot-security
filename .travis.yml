@@ -67,6 +67,10 @@ script:
   - echo 'INHERIT += "rm_work_and_downloads"' >>conf/local.conf
   - mkdir classes
   - cp ../scripts/rm_work_and_downloads.bbclass classes
+  - echo 'BB_SCHEDULERS = "rmwork.RunQueueSchedulerRmWork"' >>conf/local.conf
+  - echo 'BB_SCHEDULER = "rmwork"' >>conf/local.conf
+  - PYTHONPATH=$TRAVIS_BUILD_DIR/scripts
+  - export PYTHONPATH
   # Even with rm_work in place, running too many tasks in parallel can
   # cause the disk to overflow temporarily and/or trigger the
   # out-of-memory killer, so we allow only two tasks.  The default is
