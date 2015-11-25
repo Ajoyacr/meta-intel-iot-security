@@ -42,18 +42,15 @@ class RunQueueSchedulerRmWork(BaseScheduler):
                 self.rmwork_tasks.add(taskid)
                 bb.note('Found do_rm_work: %s' % self.describe_task(taskid))
 
-        # Move all rm_work tasks to the end of the queue (because
-        # later = higher priority).
-        index = 0
-        end = self.numTasks
-        while index < end:
+        # Move all rm_work tasks to the head of the queue (because
+        # earlier = lower priority = runs earlier).
+        rmwork_index = 0
+        for index in xrange(self.numTasks):
             taskid = self.prio_map[index]
             if taskid in self.rmwork_tasks:
                 del self.prio_map[index]
-                self.prio_map.append(taskid)
-                end -= 1
-            else:
-                index += 1
+                self.prio_map.insert(rmwork_index, taskid)
+                rmwork_index += 1
 
         self.rev_prio_map = range(self.numTasks)
         for taskid in xrange(self.numTasks):
