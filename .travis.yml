@@ -79,7 +79,13 @@ script:
   # two, according to
   # http://docs.travis-ci.com/user/ci-environment/#Virtualization-environments
   # The Trusty Beta environment has more RAM and thus can afford more parallelism.
-  - ( if [ "$iscontainer" ]; then echo 'BB_NUMBER_THREADS = "2"'; echo 'PARALLEL_MAKE = "-j4"'; else echo 'BB_NUMBER_THREADS = "4"'; echo 'PARALLEL_MAKE = "-j8"'; fi ) >>conf/local.conf
+  # However, it also has a shorter overall runtime. If we end up with two heavy
+  # compile tasks (say, linux-yocto and qemu-native), then both compete for CPU
+  # time and neither of them manages to complete before the job gets killed.
+  # Therefore run only one task and use more processes in that task. The downside
+  # is that tasks that can run in parallel (like setscene) are also serialized.
+  # This can only be fixed by using a different scheduler.
+  - ( if [ "$iscontainer" ]; then echo 'BB_NUMBER_THREADS = "2"'; echo 'PARALLEL_MAKE = "-j4"'; else echo 'BB_NUMBER_THREADS = "1"'; echo 'PARALLEL_MAKE = "-j16"'; fi ) >>conf/local.conf
   # Dump our local.conf for debugging.
   - tail -50 conf/local.conf
   - mkdir -p $HOME/sstate-cache
