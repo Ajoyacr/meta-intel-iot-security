@@ -26,6 +26,8 @@ addons:
     - diffstat
     - texinfo
     - chrpath
+    # Not installed by default on Trusty environment.
+    - xvfb
     # Not needed, sdl removed from qemu below.
     # - libsdl1.2-dev
 install:
