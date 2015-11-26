@@ -15,6 +15,7 @@
 
 import bb
 from bb.runqueue import RunQueueSchedulerCompletion as BaseScheduler
+import time
 
 class RunQueueSchedulerRmWork(BaseScheduler):
     """
@@ -27,6 +28,14 @@ class RunQueueSchedulerRmWork(BaseScheduler):
 
     def __init__(self, runqueue, rqdata):
         BaseScheduler.__init__(self, runqueue, rqdata)
+
+        self.number_compile_tasks = int(self.rq.cfgData.getVar("BB_NUMBER_COMPILE_THREADS", True) or \
+                                        self.rq.number_tasks)
+        if self.number_compile_tasks > self.rq.number_tasks:
+            bb.fatal("BB_NUMBER_COMPILE_THREADS %d must be <= BB_NUMBER_THREADS %d" % \
+                     (self.number_compile_tasks, self.rq.number_tasks))
+        bb.note('BB_NUMBER_COMPILE_THREADS %d BB_NUMBER_THREADS %d' % \
+                (self.number_compile_tasks, self.rq.number_tasks))
 
         self.rmwork_tasks = set()
         for taskid in xrange(self.numTasks):
@@ -51,6 +60,25 @@ class RunQueueSchedulerRmWork(BaseScheduler):
         taskid = self.next_buildable_task()
         if taskid is not None:
             if self.rq.stats.active < self.rq.number_tasks:
+                # Impose additional constraint on the number of compile tasks.
+                # The reason is that each compile task itself is allowed to run
+                # multiple processes, and therefore it makes sense to run less
+                # of them without also limiting the number of other tasks.
+                taskname = self.rqdata.runq_task[taskid]
+                if taskname == 'do_compile':
+                    active = [x for x in xrange(self.numTasks) if \
+                              self.rq.runq_running[x] and not self.rq.runq_complete[x]]
+                    active_compile = [x for x in active if self.rqdata.runq_task[x] == 'do_compile']
+                    if len(active_compile) >= self.number_compile_tasks:
+                        # bb.note('Not starting compile task %s, already have %d running: %s' % \
+                        #         (self.describe_task(taskid),
+                        #          len(active_compile),
+                        #          [self.describe_task(x) for x in active]))
+                        # Enabling the debug output above shows that it gets triggered even
+                        # when nothing changed. Returning None here seems to trigger some kind of
+                        # busy polling. Work around that for now by sleeping.
+                        time.sleep(0.1)
+                        return None
                 return taskid
             if taskid in self.rmwork_tasks:
                 bb.note('Choosing task %s despite task limit.' % self.describe_task(taskid))
