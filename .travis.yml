@@ -95,7 +95,7 @@ script:
   - tail -50 conf/local.conf
   - mkdir -p $HOME/sstate-cache
   - ln -s $HOME/sstate-cache .
-  - du -h $HOME | grep '^[0-9\.]\+G'
+  - du -h $HOME | grep '^[0-9\.]\+G' || true
   - df -h .; du -h -s * $HOME/sstate-cache
   # Remove .rvm to free up space. This can only be done when we do not depend anymore
   # on TravisCI add-ons like "deploy" or "artifacts", because those are implemented in
