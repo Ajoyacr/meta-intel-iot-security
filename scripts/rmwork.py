@@ -28,11 +28,6 @@ class RunQueueSchedulerRmWork(BaseScheduler):
     def __init__(self, runqueue, rqdata):
         BaseScheduler.__init__(self, runqueue, rqdata)
 
-        self.rev_prio_map = range(self.numTasks)
-        for taskid in xrange(self.numTasks):
-            self.rev_prio_map[self.prio_map[taskid]] = taskid
-        bb.note('Original priorities: %s' % [self.describe_task(x) for x in xrange(self.numTasks)])
-
         self.rmwork_tasks = set()
         for taskid in xrange(self.numTasks):
             taskname = self.rqdata.runq_task[taskid]
@@ -51,11 +46,6 @@ class RunQueueSchedulerRmWork(BaseScheduler):
                 del self.prio_map[index]
                 self.prio_map.insert(rmwork_index, taskid)
                 rmwork_index += 1
-
-        self.rev_prio_map = range(self.numTasks)
-        for taskid in xrange(self.numTasks):
-            self.rev_prio_map[self.prio_map[taskid]] = taskid
-        bb.note('Modified priorities: %s' % [self.describe_task(x) for x in xrange(self.numTasks)])
 
     def next(self):
         taskid = self.next_buildable_task()
