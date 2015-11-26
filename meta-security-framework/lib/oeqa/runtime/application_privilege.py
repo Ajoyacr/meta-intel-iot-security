@@ -22,11 +22,15 @@ class AppPrivilege(oeRuntimeTest):
 	def setUp(self):
 		self.uid = 1000
 		self.label = "test_label"
+		self.files_dir = os.path.join(
+			            os.path.abspath(os.path.dirname(__file__)), 'files')
+
                 status, output = self.target.run( "ls /tmp/notroot.py")
                 if status != 0:
                         self.target.copy_to(
                                 os.path.join(
-                                        get_files_dir(), "notroot.py"),
+                                        self.files_dir.replace('meta-security-framework', 'meta-security-smack'),
+                                        "notroot.py"),
                                         "/tmp/notroot.py")
 
 		status, output = self.target.run("grep smack /proc/mounts | awk '{print $2}'")
