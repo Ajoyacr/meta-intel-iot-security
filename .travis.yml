@@ -59,7 +59,7 @@ script:
   - echo 'VIRTUAL-RUNTIME_init_manager = "systemd"' >>conf/local.conf
   - echo 'DISTRO_FEATURES_BACKFILL_CONSIDERED = "sysvinit"' >>conf/local.conf
   - echo 'VIRTUAL-RUNTIME_initscripts = ""' >>conf/local.conf
-  - echo 'CORE_IMAGE_EXTRA_INSTALL_append_pn-core-image-minimal = "smack-userspace security-manager security-manager-policy cynara app-runas"' >>conf/local.conf
+  - echo 'CORE_IMAGE_EXTRA_INSTALL_append_pn-core-image-minimal = "python smack-userspace security-manager security-manager-policy cynara app-runas"' >>conf/local.conf
   - echo 'INHERIT_append_pn-core-image-minimal = " ima-evm-rootfs"' >>conf/local.conf
   # Use Amazon S3 bucket as sstate cache if available.
   - if [ -n "$AWS_BUCKET" ]; then echo "SSTATE_MIRRORS = \"file://.* http://$AWS_BUCKET.s3-website-${AWS_BUCKET_REGION:-us-east-1}.amazonaws.com/PATH\"" >>conf/local.conf; fi
