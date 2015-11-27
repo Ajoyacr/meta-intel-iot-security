@@ -68,7 +68,7 @@ script:
   # critical.
   - echo 'BB_DISKMON_DIRS = " STOPTASKS,/tmp,500M,10K STOPTASKS,${DL_DIR},500M,10K ABORT,/tmp,100M,1K ABORT,${DL_DIR},100M,1K"' >>conf/local.conf
   # Required to avoid running out of disk space during the build.
-  - echo 'INHERIT += "rm_work_and_downloads"' >>conf/local.conf
+  - echo 'INHERIT += "rm_work"' >>conf/local.conf
   - mkdir classes
   - cp ../scripts/rm_work_and_downloads.bbclass classes
   - echo 'BB_SCHEDULERS = "rmwork.RunQueueSchedulerRmWork"' >>conf/local.conf
