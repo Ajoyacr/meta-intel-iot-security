@@ -46,15 +46,43 @@ class RunQueueSchedulerRmWork(BaseScheduler):
                 self.rmwork_tasks.add(taskid)
                 bb.note('Found do_rm_work: %s' % self.describe_task(taskid))
 
-        # Move all rm_work tasks to the head of the queue (because
-        # earlier = lower priority = runs earlier).
-        rmwork_index = 0
-        for index in xrange(self.numTasks):
-            taskid = self.prio_map[index]
-            if taskid in self.rmwork_tasks:
-                del self.prio_map[index]
-                self.prio_map.insert(rmwork_index, taskid)
-                rmwork_index += 1
+        # Move certain tasks to the head of the queue (because
+        # earlier = lower priority = runs earlier). The ordering
+        # is rm_work (highest priority) > do_build > do_package_write_ipk/deb/rpm >
+        # ... because then tasks that complete a certain recipe come before
+        # tasks from other recipes that would otherwise interrupt completing
+        # the initial recipe.
+        #
+        # For example, when foo has a higher priority than bar, but DEPENDS on bar,
+        # then the implicit rule (from base.bbclass) is that foo's do_configure depends
+        # on bar's do_populate_sysroot. When that is done, normally the tasks from
+        # foo would continue to run and bar only gets cleaned up later. By ordering
+        # bar's task after do_populate_sysroot before foo's do_configure, that problem
+        # gets avoided.
+        task_index = 0
+        for task in ('do_rm_work',
+                     'do_build',
+                     'do_package_write_ipk',
+                     'do_package_rpm',
+                     'do_package_deb',
+                     'do_package_qa',
+                     'do_packagedata',
+                     'do_package',
+                     'do_populate_lic',
+                     'do_populate_sysroot',
+                     'do_install',
+                     'do_compile',
+                     'do_configure',
+                     'do_patch',
+                     'do_unpack',
+                     'do_fetch'):
+            for index in xrange(task_index, self.numTasks):
+                taskid = self.prio_map[index]
+                taskname = self.rqdata.runq_task[taskid]
+                if taskname == task:
+                    del self.prio_map[index]
+                    self.prio_map.insert(task_index, taskid)
+                    task_index += 1
 
     def next(self):
         taskid = self.next_buildable_task()
