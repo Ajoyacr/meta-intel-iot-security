@@ -8,40 +8,26 @@
 # INHERIT += "rm_work_and_downloads"
 #
 # In addition to removing local build directories of a recipe, it also
-# removes the downloaded source. For now, only normal archives are removed,
-# repositories are left in place.
+# removes the downloaded source. This is achieved by making the DL_DIR
+# recipe-specific. While reducing disk usage, it increases network usage (for
+# example, compiling the same source for target and host implies downloading
+# the source twice).
+#
+# Because the "do_fetch" task does not get re-run after removing the downloaded
+# sources, this class is also not suitable for incremental builds.
+#
+# Where it works well is in well-connected build environments with limited
+# disk space (like TravisCI).
 
 inherit rm_work
 
-do_rm_work[postfuncs] += "rm_downloads"
-python rm_downloads () {
-    if bb.utils.contains('RM_WORK_EXCLUDE', d.getVar('PN', True), True, False, d):
-        return
-    dl_dir = os.path.normpath(d.getVar('DL_DIR', True)) + '/'
-    src_uri = (d.getVar('SRC_URI', True) or "").split()
-    fetch = bb.fetch2.Fetch(src_uri, d)
-    ud = fetch.ud
-    import shutil
-    for u in ud.values():
-        local = os.path.normpath(fetch.localpath(u.url))
-        if os.path.normpath(local).startswith(dl_dir):
-            # Different recipes may share the same source, for example
-            # cross-localedef-native_2.22.bb and glibc_2.22.bb share
-            # git://sourceware.org/git/glibc.git. Therefore it is not
-            # entirely clear a) when a source is no longer needed and b)
-            # how to remove the downloaded copy safely so that it
-            # can be fetched again if used a second time, without
-            # leading to race conditions (copy is in use by second recipe
-            # while being deleted by the first one).
-            #
-            # For now, removal of directories is avoided because it
-            # is more risky than removing a single file.
-            if os.path.isdir(local):
-                bb.note('Removing download directory: %s' % local)
-                renamed = local + '.deleteme'
-                os.rename(local, renamed)
-                shutil.rmtree(renamed)
-            elif os.path.exists(local):
-                bb.note('Removing download file: %s' % local)
-                os.unlink(local)
+# This would ensure that the existing do_rm_work() removes the downloads,
+# but does not work because some recipes have a circular dependency between
+# WORKDIR and DL_DIR (via ${SRCPV}?).
+# DL_DIR = "${WORKDIR}/downloads"
+
+# Instead go up one level and remove ourself.
+DL_DIR = "${BASE_WORKDIR}/${MULTIMACH_TARGET_SYS}/${PN}/downloads"
+do_rm_work_append () {
+    rm -rf ${DL_DIR}
 }
